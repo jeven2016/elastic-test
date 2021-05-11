@@ -12,7 +12,7 @@ spring:
 logging:
   #  pattern.dateformat: yyyy-MM-dd HH:mm:ss.SSS,Europe/Minsk
   level:
-    root: INFO
+#    root: INFO
     org.springframework.data.convert.CustomConversions: ERROR #avoid logging: WARN Registering converter
 
     # To see what is actually sent to and received from the server Request / Response logging on the transport

@@ -1,2 +1,27 @@
 # 创建一个学生
-GET http://localhost:9090/elastic-test/hlTest/create/async/YangKai
+GET http://localhost:9090/elastic-test/hlTest/create/async/WuSheng
+
+###
+
+# find a student by index and id
+GET http://localhost:9090/elastic-test/hlTest/source/student/EYyuWXkBNLB9I-2x1q_9
+###
+
+# find a student by index and id (exclude desc filed)
+GET http://localhost:9090/elastic-test/hlTest/source/student/EYyuWXkBNLB9I-2x1q_9/excludeDesc
+###
+
+# create school
+POST http://localhost:9090/elastic-test/spring/school
+Content-Type: application/json
+
+{
+  "name": "ZhuShan school",
+  "introduction": "南京市江宁区竹山小学原名骆村小学，地处江宁区东山街道竹山路174号。九十年代初，竹山路开发，骆村小学改名为竹山小学，隶属东山镇中心小学。"
+}
+
+###
+
+# find a school
+GET http://localhost:9090/elastic-test/spring/school
+###
