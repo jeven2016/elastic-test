@@ -1,0 +1,24 @@
+server:
+  port: 9090
+
+spring:
+  application:
+    name: elastic-test
+  profiles:
+    include: es
+  webflux:
+    base-path: /elastic-test
+
+logging:
+  #  pattern.dateformat: yyyy-MM-dd HH:mm:ss.SSS,Europe/Minsk
+  level:
+    root: INFO
+    org.springframework.data.convert.CustomConversions: ERROR #avoid logging: WARN Registering converter
+
+    # To see what is actually sent to and received from the server Request / Response logging on the transport
+    # level needs to be turned on as outlined in the snippet below.
+    # It  applies to both the RestHighLevelClient and ReactiveElasticsearchClient when obtained via RestClients
+    # respectively ReactiveRestClients, is not available for the TransportClient.
+    org.springframework.data.elasticsearch.client.WIRE: trace
+
+

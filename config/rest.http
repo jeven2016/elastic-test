@@ -1,0 +1,2 @@
+# 创建一个学生
+GET http://localhost:9090/elastic-test/hlTest/create/async/YangKai

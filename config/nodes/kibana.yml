@@ -1,0 +1,18 @@
+#
+## ** THIS IS AN AUTO-GENERATED FILE **
+##
+#
+#  # Default Kibana configuration for docker target
+server:
+  name: kibana
+  host: "0"
+
+#这里写你的es第一个node的地址
+elasticsearch:
+  #  hosts: [ "http://es01:9200",  "http://es02:9202", "http://es03:9203" ]
+  hosts: [ "http://es01:9200" ]
+
+xpack.monitoring.ui.container.elasticsearch.enabled: false
+
+i18n:
+  locale: zh-CN
