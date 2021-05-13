@@ -12,6 +12,9 @@ repositories {
   jcenter()
 }
 
+//https://stackoverflow.com/questions/30675654/elasticsearch-spring-boot-integration-test
+//https://stackoverflow.com/questions/51193836/elasticsearch-springboot-integration-test
+//https://dev.to/tinesoft/writing-integration-tests-for-your-spring-data-elasticsearch-based-applications-3ec0
 dependencies {
   implementation 'org.modelmapper:modelmapper:2.4.3'
   implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
@@ -30,6 +33,8 @@ dependencies {
   testImplementation 'io.projectreactor:reactor-test'
 
   //test: https://github.com/allegro/embedded-elasticsearch
+//  It is especially appropriate to have ElasticSearch embedded when the use case does not
+//  require the distributed features of ElasticSearch and all that is needed is just a single node.
   testImplementation 'com.playtika.testcontainers:embedded-elasticsearch:2.0.7'
 
 }
