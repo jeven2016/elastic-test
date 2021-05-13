@@ -1,8 +1,10 @@
 package wzjtech.test.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import java.io.IOException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,5 +39,11 @@ public class HighLevelClientController {
   public Map<String, Object> findStudentExcludeDescField(
       @PathVariable String indexName, @PathVariable String id) {
     return service.findByIdExcludeFields(indexName, id);
+  }
+
+  @DeleteMapping("source/{indexName}/{id}")
+  public void deleteById(@PathVariable String indexName, @PathVariable String id)
+      throws IOException {
+    service.deleteById(indexName, id);
   }
 }

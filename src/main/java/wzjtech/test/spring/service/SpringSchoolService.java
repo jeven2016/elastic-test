@@ -17,7 +17,11 @@ public class SpringSchoolService {
     return schoolRep.findById(id);
   }
 
-  public Mono<SchoolDocument> save(SchoolDocument schoolDocument){
+  public Mono<SchoolDocument> save(SchoolDocument schoolDocument) {
     return schoolRep.save(schoolDocument);
+  }
+
+  public Mono<Void> delete(String id) {
+    return schoolRep.deleteById(id);
   }
 }

@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
@@ -31,9 +32,7 @@ class Student {
   String desc;
 }
 
-/**
- * Interact with elasticsearch by the raw driver
- */
+/** Interact with elasticsearch by the raw driver */
 @Service
 @Slf4j
 public class HighLevelClientService {
@@ -122,5 +121,11 @@ public class HighLevelClientService {
       log.warn("An IOException occurs", e);
     }
     return null;
+  }
+
+  public void deleteById(String indexName, String id) throws IOException {
+    DeleteRequest deleteRequest = new DeleteRequest().id(id).index(indexName);
+
+    client.delete(deleteRequest, RequestOptions.DEFAULT);
   }
 }
