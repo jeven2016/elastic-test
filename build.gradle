@@ -28,6 +28,10 @@ dependencies {
 
   testImplementation 'org.springframework.boot:spring-boot-starter-test'
   testImplementation 'io.projectreactor:reactor-test'
+
+  //test: https://github.com/allegro/embedded-elasticsearch
+  testImplementation 'com.playtika.testcontainers:embedded-elasticsearch:2.0.7'
+
 }
 
 test {
