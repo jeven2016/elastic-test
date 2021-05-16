@@ -19,6 +19,7 @@ dependencies {
   implementation 'org.modelmapper:modelmapper:2.4.3'
   implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
   implementation 'org.springframework.boot:spring-boot-starter-webflux'
+  compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 
   compileOnly('org.projectlombok:lombok:1.18.20')
   annotationProcessor('org.projectlombok:lombok')
@@ -35,7 +36,7 @@ dependencies {
   //test: https://github.com/allegro/embedded-elasticsearch
 //  It is especially appropriate to have ElasticSearch embedded when the use case does not
 //  require the distributed features of ElasticSearch and all that is needed is just a single node.
-  testImplementation 'com.playtika.testcontainers:embedded-elasticsearch:2.0.7'
+//  testImplementation 'com.playtika.testcontainers:embedded-elasticsearch:2.0.7'
 
 }
 

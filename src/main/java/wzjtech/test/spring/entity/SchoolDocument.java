@@ -14,11 +14,12 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 @Getter
 @Setter
 public class SchoolDocument {
-  @Id private String id;
+  @Id
+  private String id;
 
-  @Field(type = FieldType.Text)
+  @Field(analyzer = "ik_max_word", type = FieldType.Text)
   private String name;
 
-  @Field(type = FieldType.Text)
+  @Field(analyzer = "ik_max_word", type = FieldType.Text)
   private String introduction;
 }
