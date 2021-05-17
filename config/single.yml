@@ -1,7 +1,8 @@
 version: '2.2'
 services:
   es01:
-    image: elasticsearch:7.9.3
+    image: elasticsearch-plugins:7.9.3
+#    image: elasticsearch:7.9.3
     container_name: es01
     environment:
       - node.name=es01

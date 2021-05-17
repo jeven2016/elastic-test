@@ -1,19 +1,18 @@
 package wzjtech.test.spring.entity;
 
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
 
-import java.util.List;
-
 @Document(indexName = "books")
 @Getter
 @Setter
-//@TypeAlias("BookType") or class name used
+// @TypeAlias("BookType") or class name used
 public class Book {
-  @Field(type = FieldType.Text)
+  @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
   private String name;
 
   @Field(type = FieldType.Keyword)
