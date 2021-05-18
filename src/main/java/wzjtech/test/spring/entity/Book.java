@@ -1,8 +1,12 @@
 package wzjtech.test.spring.entity;
 
+import java.time.Instant;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.domain.Persistable;
 import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 import org.springframework.data.elasticsearch.annotations.FieldType;
@@ -11,7 +15,9 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 @Getter
 @Setter
 // @TypeAlias("BookType") or class name used
-public class Book {
+public class Book implements Persistable<String> {
+  @Id private String id;
+
   @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
   private String name;
 
@@ -28,4 +34,13 @@ public class Book {
   private String status;
 
   List<String> pictures;
+
+  @CreatedDate
+  @Field(type = FieldType.Auto)
+  private Instant createdDate;
+
+  @Override
+  public boolean isNew() {
+    return id == null || createdDate == null;
+  }
 }

@@ -1,12 +1,21 @@
 package wzjtech.test;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Set;
+import org.elasticsearch.action.search.SearchRequest;
+import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.client.RequestOptions;
+import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +34,10 @@ public class BookTest {
   @Autowired BookRep bookRep;
 
   @Autowired ReactiveElasticsearchTemplate template;
+
+  @Autowired RestHighLevelClient client;
+
+  @Autowired ObjectMapper objectMapper;
 
   private Set<Book> getBooks() throws IOException {
     String path = "books.xml";
@@ -124,16 +137,74 @@ public class BookTest {
   }
 
   /*
-    it works for keyword but seems not working for analyzed text
-   */
+   it works for keyword but seems not working for analyzed text
+  */
   @Test
   public void testWildcardQuery() {
     var query =
         new NativeSearchQueryBuilder()
-            .withQuery(QueryBuilders.wildcardQuery("url", "*OAjnAL*"))//? means only one char
+            .withQuery(QueryBuilders.wildcardQuery("url", "*OAjn?L*")) // ? means only one char
             .build();
 
     search(query);
+  }
+
+  /*
+  Pageable: search_after, the sort is required, cannot got to a specific page.
+  */
+  @Test
+  public void testPageable() throws IOException {
+    var pageLimit = 5;
+    var currentPage = 0;
+
+    // page: 5 items/page
+    // firstly, query the first page that no search_after set
+    var sb =
+        new SearchSourceBuilder()
+            .query(QueryBuilders.matchAllQuery())
+            .size(pageLimit)
+            .sort("createdDate", SortOrder.DESC)
+            .sort("url", SortOrder.ASC);
+
+    var sr = new SearchRequest("books").source(sb);
+
+    // query the first page
+    var searchResponse = client.search(sr, RequestOptions.DEFAULT);
+
+    printResponse(searchResponse, pageLimit, 0);
+
+    // page: 1
+    if (searchResponse.getHits().getHits().length > 0) {
+      var hits = searchResponse.getHits().getHits();
+      // get last sort result
+      var lastDate = (Long) (hits[hits.length - 1].getSourceAsMap().get("createdDate"));
+      var lastUrl = (String) (hits[hits.length - 1].getSourceAsMap().get("url"));
+
+      sb.searchAfter(new String[] {lastDate.toString(), lastUrl});
+      sr.source(sb);
+      searchResponse = client.search(sr, RequestOptions.DEFAULT);
+      printResponse(searchResponse, pageLimit, ++currentPage);
+
+      // current is page=1 and try access page 3
+      sb.size(2 * pageLimit); // try to access page=2 and page=3;
+      sb.searchAfter(new String[] {lastDate.toString(), lastUrl});
+      sr.source(sb);
+      searchResponse = client.search(sr, RequestOptions.DEFAULT);
+      hits = searchResponse.getHits().getHits();
+
+      hits = Arrays.copyOfRange(hits, 5, hits.length - 1); // split the third page of hits
+      for (SearchHit hit : hits) {
+        var map = hit.getSourceAsMap();
+        System.out.println("name=" + map.get("name"));
+      }
+
+      System.out.println("total: " + searchResponse.getHits().getTotalHits().value);
+
+      var pages = (searchResponse.getHits().getTotalHits().value + pageLimit - 1) / pageLimit;
+      System.out.println("pages: " + pages);
+      System.out.println("page: " + 3);
+      System.out.println("========================================");
+    }
   }
 
   private void search(Query query) {
@@ -145,5 +216,21 @@ public class BookTest {
               System.out.println("name=" + book.getName());
             })
         .blockLast();
+  }
+
+  private void printResponse(SearchResponse serverResponse, int pageLimit, int currentPage) {
+    var hits = serverResponse.getHits().getHits();
+
+    for (SearchHit hit : hits) {
+      var map = hit.getSourceAsMap();
+      System.out.println("name=" + map.get("name"));
+    }
+
+    System.out.println("total: " + serverResponse.getHits().getTotalHits().value);
+
+    var pages = (serverResponse.getHits().getTotalHits().value + pageLimit - 1) / pageLimit;
+    System.out.println("pages: " + pages);
+    System.out.println("page: " + currentPage);
+    System.out.println("========================================");
   }
 }
