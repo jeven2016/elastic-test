@@ -125,6 +125,41 @@ public class BookTest {
   }
 
   /*
+    GET /books/_search
+  {
+    "query": {
+      "bool": {
+        "must": [
+          { "match": { "name":   "女业务"        }}
+        ],
+        "filter": [
+          { "range":  { "picCount": {"gte": 1000} }}
+        ]
+      }
+    }
+  }
+     */
+  @Test
+  public void testMatchWithFilter() {
+    var query =
+        new NativeSearchQueryBuilder()
+            .withQuery(QueryBuilders.matchQuery("name", "女业务"))
+            // do further query based on previous result
+            .withFilter(QueryBuilders.rangeQuery("picCount").gte(1000))
+            .build();
+    search(query);
+
+    // or with bool query
+    query =
+        new NativeSearchQueryBuilder()
+            .withQuery(QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("name", "女业务")))
+            .withFilter(QueryBuilders.rangeQuery("picCount").gte(1000))
+            .build();
+
+    search(query);
+  }
+
+  /*
   多个字段匹配一个值
    */
   @Test
