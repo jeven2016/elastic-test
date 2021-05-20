@@ -1,19 +1,24 @@
 package wzjtech.test;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Set;
+
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.metrics.ParsedAvg;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.junit.jupiter.api.Test;
@@ -21,23 +26,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.elasticsearch.core.ReactiveElasticsearchTemplate;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
-import org.springframework.data.elasticsearch.core.query.Criteria;
-import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
-import org.springframework.data.elasticsearch.core.query.Query;
+import org.springframework.data.elasticsearch.core.query.*;
+import reactor.core.publisher.Mono;
 import wzjtech.test.spring.entity.Book;
 import wzjtech.test.spring.repo.BookRep;
 
 @SpringBootTest
 public class BookTest {
 
-  @Autowired BookRep bookRep;
+  @Autowired
+  BookRep bookRep;
 
-  @Autowired ReactiveElasticsearchTemplate template;
+  @Autowired
+  ReactiveElasticsearchTemplate template;
 
-  @Autowired RestHighLevelClient client;
+  @Autowired
+  RestHighLevelClient client;
 
-  @Autowired ObjectMapper objectMapper;
+  @Autowired
+  ObjectMapper objectMapper;
 
   private Set<Book> getBooks() throws IOException {
     String path = "books.xml";
@@ -48,7 +55,8 @@ public class BookTest {
     XmlMapper xmlMapper = new XmlMapper();
     File outputFile = new File(path);
 
-    Set<Book> set = xmlMapper.readValue(outputFile, new TypeReference<Set<Book>>() {});
+    Set<Book> set = xmlMapper.readValue(outputFile, new TypeReference<Set<Book>>() {
+    });
     return set;
   }
 
@@ -216,14 +224,14 @@ public class BookTest {
       var lastDate = (Long) (hits[hits.length - 1].getSourceAsMap().get("createdDate"));
       var lastUrl = (String) (hits[hits.length - 1].getSourceAsMap().get("url"));
 
-      sb.searchAfter(new String[] {lastDate.toString(), lastUrl});
+      sb.searchAfter(new String[]{lastDate.toString(), lastUrl});
       sr.source(sb);
       searchResponse = client.search(sr, RequestOptions.DEFAULT);
       printResponse(searchResponse, pageLimit, ++currentPage);
 
       // current is page=1 and try access page 3
       sb.size(2 * pageLimit); // try to access page=2 and page=3;
-      sb.searchAfter(new String[] {lastDate.toString(), lastUrl});
+      sb.searchAfter(new String[]{lastDate.toString(), lastUrl});
       sr.source(sb);
       searchResponse = client.search(sr, RequestOptions.DEFAULT);
       hits = searchResponse.getHits().getHits();
@@ -241,6 +249,31 @@ public class BookTest {
       System.out.println("page: " + 3);
       System.out.println("========================================");
     }
+  }
+
+
+  /**
+   * 查找对应名字的book, 计算picCount的平均值.
+   * 这里要用aggreate方法，不能使用search
+   * https://stackoverflow.com/questions/62467520/retrieve-aggregations-using-spring-data-elasticsearch-reactive-template
+   */
+  @Test
+  public void testAggregation() {
+    var name = "我的";
+    var query = new NativeSearchQueryBuilder()
+        .withQuery(QueryBuilders.matchPhraseQuery("name", "我的").slop(1))
+        .addAggregation(AggregationBuilders.avg("avg_pic_count").field("picCount"))
+//        .withMaxResults(0) //not ready in this version
+//        .withSourceFilter(new FetchSourceFilterBuilder().build())
+        .build();
+    query.setMaxResults(0);
+
+    template.aggregate(query, Book.class)
+        .flatMap(aggregation -> Mono.just((ParsedAvg) aggregation))
+        .doOnNext(parsedAvg -> {
+          System.out.println("name=" + name + ",  avg picCount=" + parsedAvg.getValue() + ", avg field=" + parsedAvg.getName());
+        })
+        .blockLast();
   }
 
   private void search(Query query) {
