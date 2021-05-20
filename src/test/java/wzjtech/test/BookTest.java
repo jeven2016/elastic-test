@@ -147,6 +147,7 @@ public class BookTest {
             // do further query based on previous result
             .withFilter(QueryBuilders.rangeQuery("picCount").gte(1000))
             .build();
+    query.setMaxResults(10);
     search(query);
 
     // or with bool query
@@ -155,7 +156,7 @@ public class BookTest {
             .withQuery(QueryBuilders.boolQuery().must(QueryBuilders.matchQuery("name", "女业务")))
             .withFilter(QueryBuilders.rangeQuery("picCount").gte(1000))
             .build();
-
+    query.setMaxResults(10);
     search(query);
   }
 
