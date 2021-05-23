@@ -17,8 +17,10 @@ import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.metrics.ParsedAvg;
+import org.elasticsearch.search.aggregations.metrics.ParsedSingleValueNumericMetricsAggregation;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.junit.jupiter.api.Test;
@@ -262,16 +264,26 @@ public class BookTest {
     var name = "我的";
     var query = new NativeSearchQueryBuilder()
         .withQuery(QueryBuilders.matchPhraseQuery("name", "我的").slop(1))
+
+        /*
+          max  最大值
+          min  最小值
+          sum  求和
+          avg  平均值
+         */
         .addAggregation(AggregationBuilders.avg("avg_pic_count").field("picCount"))
+        .addAggregation(AggregationBuilders.max("max").field("picCount"))
+        .addAggregation(AggregationBuilders.min("min").field("picCount"))
+        .addAggregation(AggregationBuilders.sum("sum").field("picCount"))
 //        .withMaxResults(0) //not ready in this version
 //        .withSourceFilter(new FetchSourceFilterBuilder().build())
         .build();
     query.setMaxResults(0);
 
     template.aggregate(query, Book.class)
-        .flatMap(aggregation -> Mono.just((ParsedAvg) aggregation))
+        .flatMap(aggregation -> Mono.just((ParsedSingleValueNumericMetricsAggregation) aggregation))
         .doOnNext(parsedAvg -> {
-          System.out.println("name=" + name + ",  avg picCount=" + parsedAvg.getValue() + ", avg field=" + parsedAvg.getName());
+          System.out.println("name=" + name + ",  aggr picCount=" + parsedAvg.value() + ", aggr field=" + parsedAvg.getName());
         })
         .blockLast();
   }
