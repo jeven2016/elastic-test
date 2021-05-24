@@ -1,15 +1,21 @@
 plugins {
-  id 'org.springframework.boot' version '2.4.5'
+  id 'org.springframework.boot' version '2.5.0'
   id 'io.spring.dependency-management' version '1.0.11.RELEASE'
   id 'java'
 }
 
 group 'wzjtech'
 version '1.0-SNAPSHOT'
-sourceCompatibility = '11'
+sourceCompatibility = JavaVersion.VERSION_16
+targetCompatibility = JavaVersion.VERSION_16
 
 repositories {
-  jcenter()
+  maven {
+    //then try to retrieve jars from nexus
+    url nexusPublicUrl
+  }
+  maven { url 'https://repo.spring.io/release' }
+  mavenCentral()
 }
 
 //https://stackoverflow.com/questions/30675654/elasticsearch-spring-boot-integration-test
@@ -17,9 +23,9 @@ repositories {
 //https://dev.to/tinesoft/writing-integration-tests-for-your-spring-data-elasticsearch-based-applications-3ec0
 dependencies {
   implementation 'org.modelmapper:modelmapper:2.4.3'
-  implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch:2.4.5'
+  implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
   implementation 'org.springframework.boot:spring-boot-starter-webflux'
-  compile 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
+  implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml'
 
   compileOnly('org.projectlombok:lombok:1.18.20')
   annotationProcessor('org.projectlombok:lombok')

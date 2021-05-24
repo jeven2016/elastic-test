@@ -1,26 +1,16 @@
 package wzjtech.test;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Set;
-
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
-import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
-import org.elasticsearch.search.aggregations.metrics.ParsedAvg;
-import org.elasticsearch.search.aggregations.metrics.ParsedSingleValueNumericMetricsAggregation;
+import org.elasticsearch.search.aggregations.metrics.*;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
 import org.junit.jupiter.api.Test;
@@ -28,10 +18,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.elasticsearch.core.ReactiveElasticsearchTemplate;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
-import org.springframework.data.elasticsearch.core.query.*;
-import reactor.core.publisher.Mono;
+import org.springframework.data.elasticsearch.core.query.Criteria;
+import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
+import org.springframework.data.elasticsearch.core.query.Query;
 import wzjtech.test.spring.entity.Book;
 import wzjtech.test.spring.repo.BookRep;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Set;
 
 @SpringBootTest
 public class BookTest {
@@ -270,22 +268,94 @@ public class BookTest {
           min  最小值
           sum  求和
           avg  平均值
+          value_count  统计符合条件的记录数目，跟hits.total.value的值一致
          */
         .addAggregation(AggregationBuilders.avg("avg_pic_count").field("picCount"))
         .addAggregation(AggregationBuilders.max("max").field("picCount"))
         .addAggregation(AggregationBuilders.min("min").field("picCount"))
         .addAggregation(AggregationBuilders.sum("sum").field("picCount"))
-//        .withMaxResults(0) //not ready in this version
-//        .withSourceFilter(new FetchSourceFilterBuilder().build())
+        .addAggregation(AggregationBuilders.count("name_count").field("name.keyword")) //value_count， 只能用于非分词的字符串属性
+        .addAggregation(AggregationBuilders.cardinality("cardinality_field").field("name.keyword"))//distinct, 计算文档名称不重复的记录条数
+        .withMaxResults(0) //not ready in this version
+//        .withSourceFilter(new FetchSourceFilterBuilder().build())//选择忽略或包括某些字段
         .build();
-    query.setMaxResults(0);
 
     template.aggregate(query, Book.class)
-        .flatMap(aggregation -> Mono.just((ParsedSingleValueNumericMetricsAggregation) aggregation))
-        .doOnNext(parsedAvg -> {
-          System.out.println("name=" + name + ",  aggr picCount=" + parsedAvg.value() + ", aggr field=" + parsedAvg.getName());
+        .doOnNext(aggregation -> {
+          if (aggregation instanceof ParsedSingleValueNumericMetricsAggregation parsedAggregation) {
+            System.out.println("name=" + name + ",  aggr picCount=" + parsedAggregation.value() + ", aggr field=" + parsedAggregation.getName());
+          }
+
+          if (aggregation instanceof ParsedValueCount parsedValueCount) {
+            System.out.println("name=" + name + ", aggr value_count=" + parsedValueCount.value() + ", aggr field=" + parsedValueCount.getName());
+          }
+
+          if (aggregation instanceof ParsedCardinality parsedCardinality) {
+            System.out.println("name=" + name + ", aggr cardinality=" + parsedCardinality.value() + ", aggr field=" + parsedCardinality.getName());
+          }
         })
         .blockLast();
+  }
+
+
+  /**
+   * Stats 统计
+   * 统计某个字段的max, min, count, avg值， 不能针对string统计
+   * <p>
+   * extend Stats统计， 多了几个其他的值统计
+   */
+  @Test
+  public void testStats() {
+    var query = new NativeSearchQueryBuilder()
+        .withQuery(QueryBuilders.matchAllQuery())
+        .addAggregation(AggregationBuilders.stats("stats_name").field("picCount"))
+//        .addAggregation(AggregationBuilders.extendedStats("extend_stats_name").field("picCount"))//多了平方和、方差、标准差、标准差的空间
+        .build();
+
+    template.aggregate(query, Book.class)
+        .doOnNext(aggregation -> {
+          System.out.println("aggrName=" + aggregation.getName());
+          var aggr = (ParsedStats) aggregation;
+          System.out.println("avg=" + aggr.getAvg());
+          System.out.println("max=" + aggr.getMax());
+          System.out.println("min=" + aggr.getMin());
+          System.out.println("sum=" + aggr.getSum());
+          System.out.println("count=" + aggr.getCount());
+
+          if (aggr instanceof ParsedExtendedStats parsedExtendedStats) {
+            System.out.println("sumOfSquares=" + parsedExtendedStats.getSumOfSquares());
+            System.out.println("Variance=" + parsedExtendedStats.getVarianceAsString());
+            System.out.println("StdDeviation=" + parsedExtendedStats.getStdDeviationAsString());
+            System.out.println("StdDeviationPopulation=" + parsedExtendedStats.getStdDeviationPopulationAsString());
+            System.out.println("StdDeviationBound_lower=" + parsedExtendedStats.getStdDeviationBoundAsString(ExtendedStats.Bounds.LOWER));
+          }
+        })
+        .then().block();
+  }
+
+  @Test
+  public void testPercentage() {
+    System.out.println("========================================");
+    var query = new NativeSearchQueryBuilder()
+//        .withQuery(QueryBuilders.matchPhraseQuery("name", "我的"))
+        .addAggregation(AggregationBuilders.percentiles("percentage_picCount").field("picCount").percentiles(50, 75, 99))
+        .addAggregation(AggregationBuilders.avg("avg_picCount").field("picCount"))
+        .build();
+
+    template.aggregate(query, Book.class)
+        .doOnNext((aggregation) -> {
+          if (aggregation instanceof ParsedPercentiles percentilesAggr) {
+            percentilesAggr.iterator().forEachRemaining(percentile -> {
+              System.out.println(percentile.getPercent() + "% : " + percentile.getValue());
+            });
+          }
+
+          if (aggregation instanceof ParsedAvg parsedAvg) {
+            System.out.println(parsedAvg.getName() + "=" + parsedAvg.getValue());
+          }
+
+
+        }).then().block();
   }
 
   private void search(Query query) {

@@ -1,7 +1,7 @@
 version: '2.2'
 services:
   es01:
-    image: elasticsearch:7.12.0
+    image: elasticsearch-plugins:7.12.1
     container_name: es01
     environment:
       - node.name=es01
@@ -24,7 +24,7 @@ services:
       - elastic
 
   es02:
-    image: elasticsearch:7.12.0
+    image: elasticsearch-plugins:7.12.1
     container_name: es02
     environment:
       - node.name=es02
@@ -47,7 +47,7 @@ services:
       - elastic
 
   es03:
-    image: elasticsearch:7.12.0
+    image: elasticsearch-plugins:7.12.1
     container_name: es03
     ports:
       - 9203:9200
@@ -70,7 +70,7 @@ services:
       - elastic
 
   kibana:
-    image: kibana:7.12.0
+    image: kibana:7.12.1
     container_name: kibana
     ports:
       - 5601:5601

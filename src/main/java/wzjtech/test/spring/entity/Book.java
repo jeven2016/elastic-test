@@ -1,14 +1,14 @@
 package wzjtech.test.spring.entity;
 
-import java.time.Instant;
-import java.util.List;
-
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.domain.Persistable;
 import org.springframework.data.elasticsearch.annotations.*;
+
+import java.time.Instant;
+import java.util.List;
 
 @Document(indexName = "books")
 @Getter
@@ -23,13 +23,13 @@ public class Book implements Persistable<String> {
   // NativeSearchQuery searchQuery = new NativeSearchQueryBuilder()
   //  .withQuery(matchQuery("name.keyword", "Second Article About Elasticsearch"))
   //  .build()
-  @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
-//  @MultiField(
-//      mainField = @Field(type = FieldType.Text, fielddata = true),
-//      otherFields = {
-//          @InnerField(suffix = "keyword", type = FieldType.Keyword)
-//      }
-//  )
+//  @Field(type = FieldType.Text, analyzer = "ik_max_word", searchAnalyzer = "ik_smart")
+  @MultiField(
+      mainField = @Field(type = FieldType.Text, fielddata = true),
+      otherFields = {
+          @InnerField(suffix = "keyword", type = FieldType.Keyword)
+      }
+  )
   private String name;
 
   @Field(type = FieldType.Keyword)
