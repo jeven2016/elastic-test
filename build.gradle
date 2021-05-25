@@ -24,6 +24,7 @@ repositories {
 //https://stackoverflow.com/questions/51193836/elasticsearch-springboot-integration-test
 //https://dev.to/tinesoft/writing-integration-tests-for-your-spring-data-elasticsearch-based-applications-3ec0
 dependencies {
+  implementation 'org.apache.commons:commons-csv:1.8'
   implementation 'org.modelmapper:modelmapper:2.4.3'
   implementation 'org.springframework.boot:spring-boot-starter-data-elasticsearch'
   implementation 'org.springframework.boot:spring-boot-starter-webflux'

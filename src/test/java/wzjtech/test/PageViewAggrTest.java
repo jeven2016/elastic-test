@@ -1,8 +1,11 @@
 package wzjtech.test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
 import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
+import org.elasticsearch.search.aggregations.metrics.ParsedTopHits;
+import org.elasticsearch.search.sort.SortOrder;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -42,7 +45,7 @@ public class PageViewAggrTest {
       var userName = names[randomNameIndex];
 
       var pageView = PageView.builder()
-          .pageUrl(url).count(random.nextLong()).userName(userName).build();
+          .pageUrl(url).count((long) random.nextInt(20000)).userName(userName).build();
 
       template.save(pageView).then().block();
     });
@@ -71,6 +74,68 @@ public class PageViewAggrTest {
           aggr.getBuckets().forEach(bucket -> {
             System.out.println("key=" + bucket.getKeyAsString() + ", doc count=" + bucket.getDocCount());
           });
+        }).then().block();
+  }
+
+
+  /**
+   * 将所有的文档按照count从大到小排序，取top5且只包含id和count字段的文档
+   */
+  @Test
+  public void testTopHits() {
+    var query = new NativeSearchQueryBuilder()
+        .withQuery(QueryBuilders.matchAllQuery())
+        .addAggregation(AggregationBuilders.topHits("hits_name")
+            .size(5)
+            .sort("count", SortOrder.DESC)
+            .fetchSource(new String[]{"count", "id"}, null))
+        .build();
+
+    template.aggregate(query, PageView.class)
+        .doOnNext(aggregation -> {
+          var aggr = (ParsedTopHits) aggregation;
+          for (var hit : aggr.getHits().getHits()) {
+            var count = hit.getSourceAsMap().get("count");
+            System.out.println(aggregation.getName() + " top: " + count);
+          }
+        }).then().block();
+  }
+
+  /**
+   * 先将所有文档以userName分组，并且只取一个分组。
+   * 将查询所得的文档按照count从大到小排序，取top5且只包含id和count字段的文档
+   */
+  @Test
+  public void testGroupingTopHits() {
+    var query = new NativeSearchQueryBuilder()
+        .addAggregation(AggregationBuilders.terms("term_field").field("userName.keyword").size(1)
+            .subAggregation(AggregationBuilders.topHits("hits_name")
+                .size(5)
+                .sort("count", SortOrder.DESC)
+                .fetchSource(new String[]{"count", "id"}, null)))
+        .build();
+//      同理: 先查找Jack在分组
+//    var query = new NativeSearchQueryBuilder()
+//        .withQuery(QueryBuilders.termQuery("userName.keyword", "Jack"))
+//        .addAggregation(AggregationBuilders.terms("term_field").field("userName.keyword")
+//            .subAggregation(AggregationBuilders.topHits("hits_name")
+//                .size(5)
+//                .sort("count", SortOrder.DESC)
+//                .fetchSource(new String[]{"count", "id"}, null)))
+//        .build();
+
+    template.aggregate(query, PageView.class)
+        .doOnNext(aggregation -> {
+          var aggr = (ParsedStringTerms) aggregation;
+          for (var bucket : aggr.getBuckets()) {
+            bucket.getAggregations().asList().forEach(hit -> {
+              var parsedHit = (ParsedTopHits) hit;
+              for (var searchHit : parsedHit.getHits().getHits()) {
+                var count = searchHit.getSourceAsMap().get("count");
+                System.out.println(aggregation.getName() + " top: " + count);
+              }
+            });
+          }
         }).then().block();
   }
 
