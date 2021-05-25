@@ -1,5 +1,6 @@
 package wzjtech.test;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
@@ -10,6 +11,7 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.AggregationBuilders;
+import org.elasticsearch.search.aggregations.bucket.terms.ParsedStringTerms;
 import org.elasticsearch.search.aggregations.metrics.*;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
 import org.elasticsearch.search.sort.SortOrder;
@@ -18,10 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.elasticsearch.core.ReactiveElasticsearchTemplate;
 import org.springframework.data.elasticsearch.core.mapping.IndexCoordinates;
-import org.springframework.data.elasticsearch.core.query.Criteria;
-import org.springframework.data.elasticsearch.core.query.CriteriaQuery;
-import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
-import org.springframework.data.elasticsearch.core.query.Query;
+import org.springframework.data.elasticsearch.core.query.*;
 import wzjtech.test.spring.entity.Book;
 import wzjtech.test.spring.repo.BookRep;
 
@@ -333,30 +332,131 @@ public class BookTest {
         .then().block();
   }
 
+  /**
+   * 计算百分比范围内的最大值
+   * <p>
+   * 比如对于文档:
+   * {latency: 200, ....}
+   * {latency: 400, ....}
+   * {latency: 500, ....}
+   * ....
+   * <p>
+   * 需要统计50%范围内，latency在什么范围值内。 90%值在什么范围内
+   */
   @Test
   public void testPercentage() {
     System.out.println("========================================");
     var query = new NativeSearchQueryBuilder()
-//        .withQuery(QueryBuilders.matchPhraseQuery("name", "我的"))
+        .withQuery(QueryBuilders.matchPhraseQuery("name", "我的"))
         .addAggregation(AggregationBuilders.percentiles("percentage_picCount").field("picCount").percentiles(50, 75, 99))
+        .addAggregation(AggregationBuilders.percentileRanks("per_ranks", new double[]{50, 99}).field("picCount"))
         .addAggregation(AggregationBuilders.avg("avg_picCount").field("picCount"))
         .build();
 
+     /*
+      输出：
+      50.0% : 1193.5
+      75.0% : 3716.0
+      99.0% : 5345.0
+
+      表示50%的情况下，图片数是1193.5， 75%时，3716图片数
+      */
     template.aggregate(query, Book.class)
         .doOnNext((aggregation) -> {
+
           if (aggregation instanceof ParsedPercentiles percentilesAggr) {
             percentilesAggr.iterator().forEachRemaining(percentile -> {
               System.out.println(percentile.getPercent() + "% : " + percentile.getValue());
             });
           }
 
+          if (aggregation instanceof ParsedTDigestPercentileRanks ranks) {
+            ranks.iterator().forEachRemaining(percentile -> {
+              System.out.println("Rank=> " + percentile.getPercent() + "% : " + percentile.getValue());
+            });
+          }
+
           if (aggregation instanceof ParsedAvg parsedAvg) {
             System.out.println(parsedAvg.getName() + "=" + parsedAvg.getValue());
           }
+        }).then().block();
+  }
 
+  /**
+   * 百分比排名聚合, 统计picCount值小于等于500占百分比， 值小于10000占百分比多少
+   */
+  @Test
+  public void testPerRank() {
+    System.out.println("========================================");
+    var query = new NativeSearchQueryBuilder()
+        .withQuery(QueryBuilders.matchAllQuery())
+        .addAggregation(AggregationBuilders.percentileRanks("per_ranks", new double[]{500, 10000}).field("picCount"))
+        .addAggregation(AggregationBuilders.avg("avg_picCount").field("picCount"))
+        .build();
+
+    template.aggregate(query, Book.class)
+        .doOnNext((aggregation) -> {
+          if (aggregation instanceof ParsedTDigestPercentileRanks ranks) {
+            ranks.iterator().forEachRemaining(percentile -> {
+              System.out.println("Rank=> " + percentile.getValue() + " : " + percentile.getPercent() + "%");
+            });
+          }
+        }).then().block();
+  }
+
+  /**
+   * 先分组再排序取top5文档的picCount值
+   * <p>
+   * 分组查询，先以status分组得到一个桶， 再分别统计桶里面的文档数目，在sub aggregation中统计.
+   * 输出：
+   * key=COMPLETED, count=892
+   * key=FAILED, count=30
+   * key=NEW_ADDED, count=23
+   */
+  @Test
+  public void testGroupingByTerm_hasValueCount() {
+    System.out.println("========================================");
+    var query = new NativeSearchQueryBuilder()
+        .addAggregation(AggregationBuilders.terms("status_term")
+            .field("status")
+            .subAggregation(AggregationBuilders.count("field_count").field("name.keyword")))
+        .build();
+
+    template.aggregate(query, Book.class)
+        .doOnNext(aggregation -> {
+          var aggr = (ParsedStringTerms) aggregation;
+          aggr.getBuckets().forEach(bucket -> {
+            var valueCount = (ParsedValueCount) bucket.getAggregations().asMap().get("field_count");
+            System.out.println("key=" + bucket.getKeyAsString() + ", count=" + valueCount.getValue());
+          });
 
         }).then().block();
   }
+
+  /**
+   * 利用默认的的doc_count去计算数目， 不需要添加子aggregation
+   * <p>
+   * <p>
+   * Note: 执行分组时，spring默认添加一个"order":[{"_count":"desc"},{"_key":"asc"}]}, 即以文档的个数进行排序，
+   * 因此返回结果中带了一个count字段，所以就不需要下面的sub aggregation了
+   * {"key" : "COMPLETED","doc_count" : 892}
+   */
+  @Test
+  public void testGroupingByTerm() {
+    System.out.println("========================================");
+    var query = new NativeSearchQueryBuilder()
+        .addAggregation(AggregationBuilders.terms("status_term").field("status"))
+        .build();
+
+    template.aggregate(query, Book.class)
+        .doOnNext(aggregation -> {
+          var aggr = (ParsedStringTerms) aggregation;
+          aggr.getBuckets().forEach(bucket -> {
+            System.out.println("key=" + bucket.getKeyAsString() + ", doc count=" + bucket.getDocCount());
+          });
+        }).then().block();
+  }
+
 
   private void search(Query query) {
     template
@@ -383,5 +483,14 @@ public class BookTest {
     System.out.println("pages: " + pages);
     System.out.println("page: " + currentPage);
     System.out.println("========================================");
+  }
+
+
+  private void printJson(String key, Object obj) {
+    try {
+      System.out.println("key=" + key + " " + objectMapper.writeValueAsString(obj));
+    } catch (JsonProcessingException e) {
+      e.printStackTrace();
+    }
   }
 }

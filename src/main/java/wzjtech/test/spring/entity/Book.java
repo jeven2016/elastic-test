@@ -41,6 +41,7 @@ public class Book implements Persistable<String> {
   @Field(type = FieldType.Integer)
   private int picCount;
 
+  //completed, failed
   @Field(type = FieldType.Keyword)
   private String status;
 
