@@ -434,12 +434,7 @@ public class BookTest {
   }
 
   /**
-   * 利用默认的的doc_count去计算数目， 不需要添加子aggregation
-   * <p>
-   * <p>
-   * Note: 执行分组时，spring默认添加一个"order":[{"_count":"desc"},{"_key":"asc"}]}, 即以文档的个数进行排序，
-   * 因此返回结果中带了一个count字段，所以就不需要下面的sub aggregation了
-   * {"key" : "COMPLETED","doc_count" : 892}
+   * Term分组过滤
    */
   @Test
   public void testGroupingByTerm() {
