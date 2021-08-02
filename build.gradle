@@ -11,10 +11,10 @@ sourceCompatibility = JavaVersion.VERSION_16
 targetCompatibility = JavaVersion.VERSION_16
 
 repositories {
-  maven {
-    //then try to retrieve jars from nexus
-    url nexusPublicUrl
-  }
+//  maven {
+//    //then try to retrieve jars from nexus
+//    url nexusPublicUrl
+//  }
   maven { url 'https://repo.spring.io/release' }
   maven { url 'https://repo.spring.io/snapshot' }
   mavenCentral()

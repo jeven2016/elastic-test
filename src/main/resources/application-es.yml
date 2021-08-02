@@ -3,16 +3,16 @@ spring:
 #  elasticsearch:
 #    rest:
 #      uris: http://127.0.0.1:9200
-
   #Connecting to Elasticsearch using Reactive REST clients
   data:
     elasticsearch:
       client:
         reactive:
-          endpoints: 127.0.0.1:9200
-          socket-timeout: 10s
-          use-ssl: false
-      repositories:
-        enabled: true
+          endpoints: es.my.com:30950
+          use-ssl: true
+          username: elastic
+          password: aa0F58v41z4FQF5dVQ463cne
+#      repositories:
+#        enabled: true
 #          username:
 #          password:

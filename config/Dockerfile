@@ -1,3 +1,5 @@
+
+#这里不是使用的ECK 里面的镜像，注意区别
 FROM elasticsearch:7.12.1
 LABEL maintainer Jeven Wang
 

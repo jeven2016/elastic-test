@@ -35,7 +35,7 @@ public class PageViewAggrTest {
   private String[] urls = {"http://hello.com/page1", "http://hello.com/page2",
       "http://hello.com/page3", "http://hello.com/page4", "http://hello.com/page5", "http://hello.com/page6"};
 
-  private String[] names = {"Jack", "Bob", "Wang", "Robert", "William", "Cart"};
+  private String[] names = {"Jack", "Bob", "Wang", "Robert", "William", "Cart","帅帅", "壮大胖", "蜗牛", "不喜欢夏天", "秋天再过冬"};
 
   @Test
   public void importPageViewRecords() {
@@ -54,7 +54,6 @@ public class PageViewAggrTest {
       template.save(pageView).then().block();
     });
   }
-
 
   /**
    * 根据url去分组，统计每个url访问的总和
@@ -236,7 +235,7 @@ public class PageViewAggrTest {
 
   /**
    * shortcut: tt
-   *
+   * <p>
    * 查询某个时间段里的文档数量，可以只指定from-to中的一个。
    */
   @Test
